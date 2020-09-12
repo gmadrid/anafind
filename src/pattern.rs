@@ -45,5 +45,6 @@ mod test {
     #[test]
     fn dots() {
         assert!(Pattern::from("n.t.gl.b").matches("notaglob"));
+        assert!(!Pattern::from("n.t.gl.b").matches("motaglob"));
     }
 }
