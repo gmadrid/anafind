@@ -1,22 +1,25 @@
 use anyhow::Error;
+use argh::FromArgs;
 use fehler::throws;
-use std::collections::{HashMap, HashSet};
+use sig::Sig;
+use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 
 mod sig;
 
 const WORDS_FILE: &str = "/usr/share/dict/words";
 
-type HashType = HashMap<String, Vec<String>>;
+type HashType = HashMap<Sig, Vec<String>>;
 
-fn make_alpha_anagram(word: &str) -> String {
-    let mut chars = word.chars().collect::<Vec<_>>();
-    chars.sort();
-    chars.into_iter().collect::<String>()
-}
+#[derive(FromArgs)]
+/// Find words in a the input string.
+struct AnafindArgs {
+    #[argh(positional)]
+    pub pattern: String,
 
-fn make_word_set(word: &str) -> HashSet<char> {
-    word.chars().collect()
+    /// output words of this length
+    #[argh(option, short = 'l')]
+    pub length: Option<u8>,
 }
 
 #[throws]
@@ -28,27 +31,33 @@ fn open_words_file() -> HashType {
 
     for word in bufrdr.lines() {
         let word = word?;
-        let anagram = make_alpha_anagram(&word);
+        let sig = Sig::for_word(&word);
 
-        hsh.entry(anagram)
-            .or_insert(Vec::default())
-            .push(word.to_owned());
+        hsh.entry(sig)
+            .or_insert_with(Vec::default)
+            .push(word.to_lowercase());
     }
     hsh
 }
 
-fn main() {
-    let pattern = std::env::args().nth(1).expect("no pattern given");
-    let pattern_set = make_word_set(&pattern);
+// We want to show all words that can be make from the input set of letters.
+// That means we want all words that are a subset of the pattern.
 
-    let hsh = open_words_file().unwrap();
+#[throws]
+fn main() {
+    let args = argh::from_env::<AnafindArgs>();
+    let pattern_sig = Sig::for_word(&args.pattern);
+
+    let hsh = open_words_file()?;
 
     let mut found = Vec::default();
-    for (k, v) in hsh.iter() {
-        let key_set = make_word_set(k);
-        if key_set.is_subset(&pattern_set) {
+    for (sig, v) in hsh.iter() {
+        if pattern_sig.contains(sig) {
             for found_word in v {
-                if found_word.len() <= pattern.len() && found_word.len() > 2 {
+                if found_word.len() > 2 {
+                    if args.length.is_some() && args.length.unwrap() as usize != found_word.len() {
+                        continue;
+                    }
                     found.push(found_word);
                 }
             }
