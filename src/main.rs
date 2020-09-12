@@ -1,10 +1,12 @@
 use anyhow::Error;
 use argh::FromArgs;
 use fehler::throws;
+use pattern::Pattern;
 use sig::Sig;
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
 
+mod pattern;
 mod sig;
 
 const WORDS_FILE: &str = "/usr/share/dict/words";
@@ -24,6 +26,10 @@ struct AnafindArgs {
     /// minimum length of output words
     #[argh(option, short = 'm', default = "3")]
     pub min_length: usize,
+
+    /// a pattern to match
+    #[argh(option, short = 'p', long = "match")]
+    pub mtch: Option<String>,
 }
 
 #[throws]
@@ -51,6 +57,7 @@ fn open_words_file() -> HashType {
 fn main() {
     let args = argh::from_env::<AnafindArgs>();
     let pattern_sig = Sig::for_word(&args.pattern);
+    let mtch = args.mtch.map(|s| Pattern::from(s.as_str()));
 
     let hsh = open_words_file()?;
 
@@ -61,6 +68,11 @@ fn main() {
                 if found_word.len() >= args.min_length {
                     if args.length.is_some() && args.length.unwrap() != found_word.len() {
                         continue;
+                    }
+                    if let Some(pat) = &mtch {
+                        if !pat.matches(found_word) {
+                            continue;
+                        }
                     }
                     found.push(found_word);
                 }
