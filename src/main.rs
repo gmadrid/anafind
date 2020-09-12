@@ -19,7 +19,11 @@ struct AnafindArgs {
 
     /// output words of this length
     #[argh(option, short = 'l')]
-    pub length: Option<u8>,
+    pub length: Option<usize>,
+
+    /// minimum length of output words
+    #[argh(option, short = 'm', default = "3")]
+    pub min_length: usize,
 }
 
 #[throws]
@@ -54,8 +58,8 @@ fn main() {
     for (sig, v) in hsh.iter() {
         if pattern_sig.contains(sig) {
             for found_word in v {
-                if found_word.len() > 2 {
-                    if args.length.is_some() && args.length.unwrap() as usize != found_word.len() {
+                if found_word.len() >= args.min_length {
+                    if args.length.is_some() && args.length.unwrap() != found_word.len() {
                         continue;
                     }
                     found.push(found_word);
