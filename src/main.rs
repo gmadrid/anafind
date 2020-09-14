@@ -28,7 +28,7 @@ struct AnafindArgs {
     pub min_length: usize,
 
     /// a pattern to match
-    #[argh(option, short = 'p', long = "match")]
+    #[argh(positional, long = "match")]
     pub mtch: Option<String>,
 }
 
